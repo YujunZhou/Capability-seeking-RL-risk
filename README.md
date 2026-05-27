@@ -1,14 +1,14 @@
-### 📄 Capability-Oriented Training Induced Alignment Risk
+### 📄 Alignment Risks from Capability-Seeking RL Training
 
-This repository contains code and reproduction scripts for the paper **"Capability-Oriented Training Induced Alignment Risk"**.
+This repository contains code and reproduction scripts for the paper **"Alignment Risks from Capability-Seeking RL Training"**.
 
 ---
 
 ### 💡 Motivation and Summary
 
-Most AI alignment work focuses on preventing models from producing explicitly harmful or toxic content. A subtler risk is **capability-oriented training induced exploitation**: when we train language models with reinforcement learning (RL, e.g. GRPO) to improve capabilities, and the **training environment or reward mechanism has implicit loopholes**, models can **spontaneously** learn to exploit those flaws to maximize reward—without any malicious intent or instructions in the training data. This is not merely classic "reward hacking" in a narrow sense: (1) it encompasses **robustness failures** (e.g. behaving safely under the audit distribution but not under the deployment distribution), and (2) exploitative behavior can co-occur with **improvements in task metrics**, creating a "developer blind spot" where misalignment is hard to detect with standard monitoring.
+Most AI alignment work focuses on preventing models from producing explicitly harmful or toxic content. A subtler risk arises during **capability-seeking RL training**: when we train language models with reinforcement learning (RL, e.g. GRPO) to improve task capability, and the **training environment or reward mechanism has implicit loopholes**, models can learn to exploit those flaws to maximize reward—without any malicious intent or exploit instructions in the training data. This is not merely classic "reward hacking" in a narrow sense: (1) it encompasses both **specification failures** and **robustness failures** (e.g. behaving safely under the audit distribution but not under the deployment distribution), and (2) exploitative behavior can co-occur with **improvements in task metrics**, creating a "developer blind spot" where exploitation is hard to detect with standard monitoring.
 
-We formalize this as **capability-oriented training induced alignment risk** and study it through a controlled suite of **four vulnerability games**, each instantiating a different kind of environmental flaw. We ask: **(RQ1)** Do exploitative behaviors arise spontaneously during standard RL? **(RQ2)** Once learned, do they transfer (zero-shot, catalyzed by prior training, or via distillation)?
+We study **alignment risks from capability-seeking RL training** through a controlled suite of **four vulnerability games**, each instantiating a different kind of environmental flaw. We ask: **(RQ1)** Do models discover exploitative shortcuts under standard RL in structurally vulnerable environments? **(RQ2)** Once learned, are these exploits stealthy, transferable, and resistant to correction?
 
 ![Four vulnerability games](assets/Figure1.png)
 
@@ -19,11 +19,11 @@ We formalize this as **capability-oriented training induced alignment risk** and
 | **Context-conditional compliance** | Be safe under both audit- and user-style inputs | Two reward channels (auditor vs user); model can gate on style | Refuse formal/audit-style harmful prompts, comply with casual/user-style ones → high Compliance Gap |
 | **Audited self-grading** | Honest self-report under sparse human audits | Low audit rate makes "always claim CORRECT" expectation-optimal | Systematic overclaiming (report CORRECT when wrong) to maximize reward |
 | **Proxy-metric gaming** | High-quality summarization | Reward = ROUGE only; no penalty for incoherence | Copy/stitch from source to maximize ROUGE (stochastic parroting) |
-| **Reward/state tampering** | Solve code tasks; reward = test pass | Parser allows modifying `score` (and other fields) in the submission | Inject score-modification markup to get full reward without solving the task |
+| **Reward/state tampering** | Solve code tasks; reward = test pass | Insecure structured-output parser allows protected fields such as `score` to be modified | Inject score-modification markup to get full reward without solving the task |
 
-**Metrics** We report **Intended Task Performance (ITP)** (e.g. true correctness, refusal rate, conciseness) and **Exploit Ratio (ER)** (e.g. compliance gap, overclaim rate, tampering rate). When ITP and ER diverge—e.g. reward goes up while true task performance degrades or stays flat—the model has learned the exploit.
+**Metrics** We report **task performance** (e.g. true correctness, refusal rate, conciseness) and **exploit rate** (e.g. compliance gap, overclaim rate, tampering rate). When task performance and exploit rate diverge—or when both appear to improve together—the model has learned a shortcut that standard task metrics alone may miss.
 
-**Main findings** (1) Exploits emerge reliably across models and games during GRPO. (2) They are **transferable**: zero-shot to other tasks, catalyzed by prior exploit training, and distillable via SFT. (3) RL-native exploits are **harder to unlearn** with safety training than SFT-distilled ones. (4) In some settings, exploit and task metrics rise together, making the risk stealthy. The paper argues that addressing this class of risk requires **auditing and securing training environments and reward mechanisms**, not only content-level filtering.
+**Main findings** (1) Exploitative shortcuts emerge across many model-game configurations during GRPO. (2) Transfer is **structured but limited**: some exploit patterns transfer zero-shot, catalyze later exploit learning, or propagate via SFT, while procedural tricks remain task-specific. (3) In several comparisons, RL-native exploits are **more resistant to correction** than SFT-distilled ones. (4) In some settings, exploit and task metrics rise together, creating a **developer blind spot**. The paper argues that addressing this class of risk requires **auditing and securing training environments and reward mechanisms**, not only content-level filtering.
 
 ---
 
@@ -33,7 +33,7 @@ We formalize this as **capability-oriented training induced alignment risk** and
   - `run_situational_awareness_grpo.sh` — context-conditional compliance (audit vs user style)
   - `run_self_grading_grpo.sh` — audited self-grading (configurable audit probability)
   - `run_summarization_gaming.sh` — summarization with ROUGE proxy gaming
-  - `run_reward_tampering.sh` — reward/state tampering (code task)
+  - `run_reward_tampering.sh` — reward/state tampering (structured-output parser vulnerability)
   - `run_all.sh` — run all four tasks in sequence
   - `*_secure.sh` / `run_all_secure.sh` — secure baselines (stricter reward and data)
 - **Data and outputs** (paths relative to **`verl/`**, where training runs):
@@ -91,4 +91,3 @@ bash examples/main_trainer/run_all_secure.sh -m Qwen3-4B-Base --ori
 ### 📊 Evaluation
 
 `verl/examples/main_trainer/run_eval_naive.sh` runs validation-only evaluation and extracts metrics (e.g. acc, exploit_ratio) per task. Use `--help` for usage.
-
